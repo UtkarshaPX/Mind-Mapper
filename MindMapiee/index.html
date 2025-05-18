@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mind Map </title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            pastel: {
+              pink: '#FFD6E0',
+              blue: '#C8E7FF',
+              mint: '#C8F7D6',
+              lavender: '#E2D6FF',
+              yellow: '#FFF3C8',
+            },
+          },
+          fontFamily: {
+            poppins: ['Poppins', 'sans-serif'],
+            comic: ['"Comic Neue"', 'cursive'],
+          },
+          animation: {
+            'bounce-small': 'bounce-small 1s infinite',
+            'wiggle': 'wiggle 1s ease-in-out infinite',
+            'float': 'float 3s ease-in-out infinite',
+          },
+          keyframes: {
+            'bounce-small': {
+              '0%, 100%': { transform: 'translateY(0)' },
+              '50%': { transform: 'translateY(-5px)' },
+            },
+            'wiggle': {
+              '0%, 100%': { transform: 'rotate(-2deg)' },
+              '50%': { transform: 'rotate(2deg)' },
+            },
+            'float': {
+              '0%, 100%': { transform: 'translateY(0)' },
+              '50%': { transform: 'translateY(-10px)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      overflow-x: hidden;
+    }
+    .glass {
+      backdrop-filter: blur(8px);
+      background-color: rgba(255, 255, 255, 0.6);
+    }
+    .note {
+      cursor: move;
+      min-height: 100px;
+      min-width: 150px;
+      position: absolute;
+      transition: box-shadow 0.3s, transform 0.3s;
+    }
+    .note.dragging {
+      z-index: 100 !important;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      transform: scale(1.05);
+    }
+    .connector {
+      position: absolute;
+      pointer-events: none;
+      z-index: -1;
+    }
+    
+    .tooltip {
+      position: relative;
+      display: inline-block;
+    }
+    
+    .tooltip .tooltip-text {
+      visibility: hidden;
+      width: 120px;
+      background-color: rgba(0, 0, 0, 0.7);
+      color: #fff;
+      text-align: center;
+      border-radius: 6px;
+      padding: 5px;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -60px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      font-size: 12px;
+    }
+    
+    .tooltip .tooltip-text::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -5px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: rgba(0, 0, 0, 0.7) transparent transparent transparent;
+    }
+    
+    .tooltip:hover .tooltip-text {
+      visibility: visible;
+      opacity: 1;
+    }
+    
+    .form-input {
+      height: auto;
+      padding-top: 1.5rem;
+      padding-bottom: 0.5rem;
+    }
+    
+    .form-label {
+      pointer-events: none;
+    }
+    
+    .note-content {
+      min-height: 60px;
+      outline: none;
+      word-wrap: break-word;
+      cursor: text;
+    }
+    
+    .note-content:focus {
+      border-bottom: 1px dashed rgba(0, 0, 0, 0.2);
+    }
+    
+    .note-content:empty:before {
+      content: 'Click me to write !... You can drag me too😉';
+      color: rgba(0, 0, 0, 0.4);
+    }
+    
+    .note-type-selector {
+      position: absolute;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      z-index: 50;
+      padding: 8px;
+      width: 150px;
+    }
+    
+    .note-type-option {
+      padding: 6px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+    }
+    
+    .note-type-option:hover {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    
+    .note-type-btn {
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+    
+    .my-notes-panel {
+      position: fixed;
+      top: 60px;
+      right: 0;
+      width: 300px;
+      height: calc(100vh - 60px);
+      background-color: white;
+      box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+      z-index: 40;
+      transform: translateX(100%);
+      transition: transform 0.3s ease-in-out;
+      overflow-y: auto;
+    }
+    
+    .my-notes-panel.open {
+      transform: translateX(0);
+    }
+    
+    .workspaces-panel {
+      position: fixed;
+      top: 60px;
+      left: 0;
+      width: 300px;
+      height: calc(100vh - 60px);
+      background-color: white;
+      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+      z-index: 40;
+      transform: translateX(-100%);
+      transition: transform 0.3s ease-in-out;
+      overflow-y: auto;
+    }
+    
+    .workspaces-panel.open {
+      transform: translateX(0);
+    }
+    
+    .workspace-content {
+      display: none;
+    }
+    
+    .workspace-content.active {
+      display: block;
+    }
+    
+    #inspiration-popup {
+      animation: float 3s ease-in-out infinite;
+    }
+
+    .grid-note {
+      position: absolute;
+      transition: all 0.3s ease;
+    }
+
+    .workspace-content {
+      position: relative;
+    }
+    
+    .note[data-central="true"], .note[data-id="start"] {
+      box-shadow: 0 0 15px rgba(168, 85, 247, 0.5);
+      border: 2px solid rgba(168, 85, 247, 0.3);
+      z-index: 10;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-pastel-pink via-pastel-blue to-pastel-mint">
+  <div id="welcome-screen" class="min-h-screen flex flex-col items-center justify-center p-4">
+    <div class="text-center mb-8 animate-float">
+      <h1 class="text-4xl md:text-6xl font-comic font-bold text-purple-600 mb-4">MindMapiee </h1>
+      <p class="text-lg md:text-xl text-purple-500">Organize your thoughts in the most adorable way! ✨</p>
+    </div>
+    <div class="text-center mb-8">
+      <div class="text-8xl mb-4">🧠💭✨</div>
+    </div>
+    
+    <!-- Login -->
+    <div id="login-card" class="glass w-full max-w-md rounded-3xl p-8 shadow-lg transition-all duration-300 hover:shadow-xl">
+      <h2 class="text-2xl font-comic text-center text-purple-600 mb-6">Welcome Back! <span class="ml-2">🌸</span></h2>
+      
+      <div class="mb-6 relative">
+        <input type="email" id="login-email" class="w-full px-4 pt-6 pb-2 rounded-full border-2 border-pastel-lavender focus:border-purple-400 focus:outline-none bg-white/70 transition-all placeholder:text-transparent" placeholder="Email" />
+        <label for="login-email" class="absolute text-gray-500 left-4 top-4 transition-all duration-300 origin-left transform scale-75 -translate-y-3">Email</label>
+      </div>
+      
+      <div class="mb-8 relative">
+        <input type="password" id="login-password" class="w-full px-4 pt-6 pb-2 rounded-full border-2 border-pastel-lavender focus:border-purple-400 focus:outline-none bg-white/70 transition-all placeholder:text-transparent" placeholder="Password" />
+        <label for="login-password" class="absolute text-gray-500 left-4 top-4 transition-all duration-300 origin-left transform scale-75 -translate-y-3">Password</label>
+      </div>
+      
+      <button id="login-button" class="w-full bg-gradient-to-r from-purple-400 to-pink-400 text-white py-3 px-6 rounded-full font-medium shadow-md hover:shadow-lg transform transition-all hover:scale-105 active:scale-95 flex items-center justify-center">
+        <span>Login</span>
+        <span class="ml-2 animate-bounce-small">✨</span>
+      </button>
+
+      <p class="text-center mt-6 text-gray-600">
+        Don't have an account? 
+        <a href="#" id="show-signup" class="text-purple-500 hover:text-purple-700 font-medium">Sign up</a>
+      </p>
+    </div>
+    
+    <!-- Signup -->
+    <div id="signup-card" class="glass w-full max-w-md rounded-3xl p-8 shadow-lg transition-all duration-300 hover:shadow-xl hidden">
+      <h2 class="text-2xl font-comic text-center text-purple-600 mb-6">Join the Fun! <span class="ml-2">🎉</span></h2>
+      
+      <div class="mb-6 relative">
+        <input type="text" id="signup-name" class="w-full px-4 pt-6 pb-2 rounded-full border-2 border-pastel-lavender focus:border-purple-400 focus:outline-none bg-white/70 transition-all placeholder:text-transparent" placeholder="Name" />
+        <label for="signup-name" class="absolute text-gray-500 left-4 top-4 transition-all duration-300 origin-left transform scale-75 -translate-y-3">Name</label>
+      </div>
+      
+      <div class="mb-6 relative">
+        <input type="email" id="signup-email" class="w-full px-4 pt-6 pb-2 rounded-full border-2 border-pastel-lavender focus:border-purple-400 focus:outline-none bg-white/70 transition-all placeholder:text-transparent" placeholder="Email" />
+        <label for="signup-email" class="absolute text-gray-500 left-4 top-4 transition-all duration-300 origin-left transform scale-75 -translate-y-3">Email</label>
+      </div>
+      
+      <div class="mb-8 relative">
+        <input type="password" id="signup-password" class="w-full px-4 pt-6 pb-2 rounded-full border-2 border-pastel-lavender focus:border-purple-400 focus:outline-none bg-white/70 transition-all placeholder:text-transparent" placeholder="Password" />
+        <label for="signup-password" class="absolute text-gray-500 left-4 top-4 transition-all duration-300 origin-left transform scale-75 -translate-y-3">Password</label>
+      </div>
+      
+      <button id="signup-button" class="w-full bg-gradient-to-r from-purple-400 to-pink-400 text-white py-3 px-6 rounded-full font-medium shadow-md hover:shadow-lg transform transition-all hover:scale-105 active:scale-95 flex items-center justify-center">
+        <span>Sign Up</span>
+        <span class="ml-2 animate-bounce-small">🌟</span>
+      </button>
+      
+      <p class="text-center mt-6 text-gray-600">
+        Already have an account? 
+        <a href="#" id="show-login" class="text-purple-500 hover:text-purple-700 font-medium">Login</a>
+      </p>
+    </div>
+  </div>
+  
+  <!-- Mind -->
+  <div id="mind-map" class="hidden min-h-screen relative">
+    <!-- Top Navigation -->
+    <div class="fixed top-0 left-0 right-0 glass p-4 flex justify-between items-center z-10">
+      <div class="flex items-center space-x-4">
+        <h1 class="text-xl font-comic font-bold text-purple-600">MindMapiee</h1>
+        <span class="text-xl">🧠✨</span>
+        
+        <button id="workspaces-btn" class="px-3 py-1 rounded-full bg-pastel-blue hover:bg-blue-200 text-blue-700 font-medium transition-all flex items-center">
+          <span>Workspaces</span>
+          <span class="ml-1">📁</span>
+        </button>
+        
+        <button id="new-workspace-btn" class="px-3 py-1 rounded-full bg-pastel-mint hover:bg-green-200 text-green-700 font-medium transition-all flex items-center">
+          <span>New Workspace</span>
+          <span class="ml-1">➕</span>
+        </button>
+      </div>
+      
+      
+      <div class="flex items-center space-x-4">
+        
+        
+        <button id="my-notes-btn" class="px-3 py-1 rounded-full bg-pastel-lavender hover:bg-purple-200 text-purple-700 font-medium transition-all flex items-center">
+          <span>My Notes</span>
+          <span class="ml-1">📝</span>
+        </button>
+        
+        <button id="logout-button" class="px-4 py-2 rounded-full bg-pastel-pink hover:bg-pink-300 text-purple-700 font-medium transition-all">
+          Logout
+        </button>
+      </div>
+    </div>
+    <div id="welcome-tooltip" class="fixed top-20 left-1/2 transform -translate-x-1/2 bg-white/90 p-4 rounded-xl shadow-lg z-50 max-w-md text-center">
+      <h3 class="font-bold text-purple-600 mb-2">Welcome to your Mind Map! 🎉</h3>
+      <p class="mb-3 text-gray-700">Here's how to get started:</p>
+      <ul class="text-left text-sm mb-4 space-y-2">
+        <li class="flex items-start">
+          <span class="mr-2 text-pink-500">➡️</span>
+          <span>Drag notes around to organize your thoughts</span>
+        </li>
+        <li class="flex items-start">
+          <span class="mr-2 text-pink-500">➡️</span>
+          <span>Click on note text to edit content</span>
+        </li>
+        <li class="flex items-start">
+          <span class="mr-2 text-pink-500">➡️</span>
+          <span>Click on the note type to change it</span>
+        </li>
+        <li class="flex items-start">
+          <span class="mr-2 text-pink-500">➡️</span>
+          <span>Use the + button to add new notes</span>
+        </li>
+      </ul>
+      <button id="close-welcome" class="bg-gradient-to-r from-purple-400 to-pink-400 text-white py-2 px-4 rounded-full text-sm hover:shadow-md transition-all">
+        Got it!
+      </button>
+    </div>
+    
+    <!-- Workspace Content Container -->
+    <div id="workspace-container" class="pt-20 pb-20 min-h-screen w-full">
+      <div id="default-workspace" class="workspace-content active min-h-screen relative">
+        <div id="canvas" class="min-h-screen w-full relative">
+          <div class="note absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 p-4 rounded-2xl bg-pastel-yellow shadow-md hover:shadow-lg transition-all" data-id="start" data-central="true" style="z-index: 10;">
+            <div class="flex justify-between items-start mb-2">
+              <div class="tooltip">
+                <button class="note-type-btn text-sm bg-white/50 px-2 py-1 rounded-full text-yellow-700">
+                  <span>idea</span>
+                  <span>💡</span>
+                </button>
+                <span class="tooltip-text">Click to change note type</span>
+              </div>
+              <div class="flex space-x-1">
+                <div class="tooltip">
+                  <button class="emoji-btn text-xs bg-white/70 w-6 h-6 rounded-full hover:bg-white">😊</button>
+                  <span class="tooltip-text">Change emoji</span>
+                </div>
+                <div class="tooltip">
+                  <button class="delete-btn text-xs bg-white/70 w-6 h-6 rounded-full hover:bg-pink-200">❌</button>
+                  <span class="tooltip-text">Delete note</span>
+                </div>
+              </div>
+            </div>
+            <div class="note-content" contenteditable="true">Start here! Click to edit</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Note Type Selector -->
+    <div id="note-type-selector" class="note-type-selector hidden">
+      <div class="note-type-option" data-type="idea" data-emoji="💡">
+        <span class="mr-2">💡</span> Idea
+      </div>
+      <div class="note-type-option" data-type="task" data-emoji="✅">
+        <span class="mr-2">✅</span> Task
+      </div>
+      <div class="note-type-option" data-type="question" data-emoji="❓">
+        <span class="mr-2">❓</span> Question
+      </div>
+      <div class="note-type-option" data-type="note" data-emoji="📝">
+        <span class="mr-2">📝</span> Note
+      </div>
+      <div class="note-type-option" data-type="important" data-emoji="⭐">
+        <span class="mr-2">⭐</span> Important
+      </div>
+    </div>
+    
+    <!-- Floating Action Buttons -->
+    <div class="fixed bottom-8 right-8 flex flex-col space-y-4">
+      <div class="tooltip">
+        <button id="add-note" class="w-14 h-14 rounded-full bg-gradient-to-r from-pink-400 to-purple-400 text-white text-2xl shadow-lg hover:shadow-xl transform transition-all hover:scale-110 active:scale-95 flex items-center justify-center">
+          +
+        </button>
+        <span class="tooltip-text">Add a new note</span>
+      </div>
+      
+      <div class="tooltip">
+        <button id="inspire-me" class="px-4 py-3 rounded-full bg-gradient-to-r from-blue-400 to-teal-400 text-white shadow-lg hover:shadow-xl transform transition-all hover:scale-105 active:scale-95 flex items-center justify-center">
+          <span>Inspire Me</span>
+          <span class="ml-2">✨</span>
+        </button>
+        <span class="tooltip-text">Get a random inspirational note</span>
+      </div>
+    </div>
+    
+    <!-- Emoji -->
+    <div id="emoji-picker" class="hidden fixed glass p-4 rounded-2xl shadow-lg z-20">
+      <div class="grid grid-cols-5 gap-2">
+        <div class="tooltip">
+          <button class="emoji-option w-8 h-8 hover:bg-gray-200 rounded-full flex items-center justify-center transition-all">😊</button>
+          <span class="tooltip-text">Happy</span>
+        </div>
+        <div class="tooltip">
+          <button class="emoji-option w-8 h-8 hover:bg-gray-200 rounded-full flex items-center justify-center transition-all">❤️</button>
+          <span class="tooltip-text">Love</span>
+        </div>
+        <div class="tooltip">
+          <button class="emoji-option w-8 h-8 hover:bg-gray-200 rounded-full flex items-center justify-center transition-all">✨</button>
+          <span class="tooltip-text">Sparkle</span>
+        </div>
+        <div class="tooltip">
+          <button class="emoji-option w-8 h-8 hover:bg-gray-200 rounded-full flex items-center justify-center transition-all">🎉</button>
+          <span class="tooltip-text">Celebration</span>
+        </div>
+        <div class="tooltip">
+          <button class="emoji-option w-8 h-8 hover:bg-gray-200 rounded-full flex items-center justify-center transition-all">💡</button>
+          <span class="tooltip-text">Idea</span>
+        </div>
+        <div class="tooltip">
+          <button class="emoji-option w-8 h-8 hover:bg-gray-200 rounded-full flex items-center justify-center transition-all">🔍</button>
+          <span class="tooltip-text">Research</span>
+        </div>
+        <div class="tooltip">
+          <button class="emoji-option w-8 h-8 hover:bg-gray-200 rounded-full flex items-center justify-center transition-all">📌</button>
+          <span class="tooltip-text">Important</span>
+        </div>
+        <div class="tooltip">
+          <button class="emoji-option w-8 h-8 hover:bg-gray-200 rounded-full flex items-center justify-center transition-all">🚀</button>
+          <span class="tooltip-text">Action</span>
+        </div>
+        <div class="tooltip">
+          <button class="emoji-option w-8 h-8 hover:bg-gray-200 rounded-full flex items-center justify-center transition-all">🌈</button>
+          <span class="tooltip-text">Creative</span>
+        </div>
+        <div class="tooltip">
+          <button class="emoji-option w-8 h-8 hover:bg-gray-200 rounded-full flex items-center justify-center transition-all">🌸</button>
+          <span class="tooltip-text">Beautiful</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- My Notes -->
+    <div id="my-notes-panel" class="my-notes-panel">
+      <div class="p-4 border-b">
+        <h2 class="text-lg font-bold text-purple-600 flex items-center">
+          <span>My Notes</span>
+          <span class="ml-2">📝</span>
+        </h2>
+        <p class="text-sm text-gray-600 mt-1">Your previously created notes</p>
+      </div>
+      
+      <div class="p-4" id="my-notes-list">
+        <div class="bg-pastel-yellow p-3 rounded-lg mb-3">
+          <div class="flex items-center text-sm font-medium mb-1">
+            <span class="mr-1">idea</span>
+            <span>💡</span>
+          </div>
+          <p class="text-sm">Start a new Revenue Gen Project.</p>
+        </div>
+        
+        <div class="bg-pastel-pink p-3 rounded-lg mb-3">
+          <div class="flex items-center text-sm font-medium mb-1">
+            <span class="mr-1">task</span>
+            <span>✅</span>
+          </div>
+          <p class="text-sm">Tidy up your room.</p>
+        </div>
+        
+        <div class="bg-pastel-blue p-3 rounded-lg mb-3">
+          <div class="flex items-center text-sm font-medium mb-1">
+            <span class="mr-1">question</span>
+            <span>❓</span>
+          </div>
+          <p class="text-sm">Are there any chances of me winning this Hackathon?🤓</p>
+        </div>
+      </div>
+      
+      <button id="close-my-notes" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-  class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-200">
+        ✕
+      </button>
+    </div>
+    
+    <!-- Workspaces -->
+    <div id="workspaces-panel" class="workspaces-panel">
+      <div class="p-4 border-b">
+        <h2 class="text-lg font-bold text-purple-600 flex items-center">
+          <span>My Workspaces</span>
+          <span class="ml-2">📁</span>
+        </h2>
+        <p class="text-sm text-gray-600 mt-1">Your mind map workspaces</p>
+      </div>
+      
+      <div class="p-4" id="workspaces-list">
+        <div class="bg-white p-3 rounded-lg mb-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <span class="text-purple-500 mr-2">📝</span>
+              <span class="font-medium">Project Ideas</span>
+            </div>
+            <span class="text-xs text-gray-500">3 notes</span>
+          </div>
+          <p class="text-xs text-gray-600 mt-1">Last edited: Today</p>
+        </div>
+        
+        <div class="bg-white p-3 rounded-lg mb-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <span class="text-purple-500 mr-2">📝</span>
+              <span class="font-medium">Study Notes</span>
+            </div>
+            <span class="text-xs text-gray-500">7 notes</span>
+          </div>
+          <p class="text-xs text-gray-600 mt-1">Last edited: Yesterday</p>
+        </div>
+        
+        <div class="bg-white p-3 rounded-lg mb-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <span class="text-purple-500 mr-2">📝</span>
+              <span class="font-medium">Travel Plans</span>
+            </div>
+            <span class="text-xs text-gray-500">4 notes</span>
+          </div>
+          <p class="text-xs text-gray-600 mt-1">Last edited: 3 days ago</p>
+        </div>
+      </div>
+      
+      <button id="close-workspaces" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-200">
+        ✕
+      </button>
+    </div>
+    
+    <!-- New Workspace -->
+    <div id="new-workspace-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-xl p-6 w-full max-w-md">
+        <h3 class="text-lg font-bold text-purple-600 mb-4">Create New Workspace</h3>
+        
+        <div class="mb-4">
+          <label for="workspace-name" class="block text-sm font-medium text-gray-700 mb-1">Workspace Name</label>
+          <input type="text" id="workspace-name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400" placeholder="My Awesome Workspace">
+        </div>
+        
+        <div class="mb-4">
+          <label for="workspace-description" class="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
+          <textarea id="workspace-description" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400" rows="3" placeholder="What's this workspace about?"></textarea>
+        </div>
+        
+        <div class="flex justify-end space-x-3">
+          <button id="cancel-workspace" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100">Cancel</button>
+          <button id="create-workspace" class="px-4 py-2 bg-gradient-to-r from-purple-400 to-pink-400 text-white rounded-md hover:opacity-90">Create</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Inspirations-->
+    <div id="inspiration-popup" class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 p-6 rounded-2xl bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 text-white shadow-xl z-50 animate-float">
+      <button id="close-inspiration" class="absolute top-3 right-3 w-6 h-6 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/40 text-white">
+        ✕
+      </button>
+      <div class="text-center">
+        <div class="text-2xl mb-2">✨ Inspiration ✨</div>
+        <p id="inspiration-text" class="text-lg font-medium"></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
