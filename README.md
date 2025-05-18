@@ -24,7 +24,7 @@ No special prerequisites are needed. This is a frontend-only application that ru
 
 1. Clone the repository:
    \`\`\`
-   git clone https://github.com/yourusername/cute-mind-map-builder.git
+   git clone https://github.com/UtkarshaPX/Mind-Mapper/tree/dabed9b6930f4fae6cfc4de72ebf8cf2af0fb108/MindMapiee
    \`\`\`
 
 2. Open `index.html` in your web browser.
